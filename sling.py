@@ -34,7 +34,7 @@ import time, sys
 from threading import Thread
 
 #FIXME: Has to be launched from within the example folder
-sys.path.append("../lib")
+#sys.path.append("../lib")
 import cflib
 from cflib.crazyflie import Crazyflie
 
