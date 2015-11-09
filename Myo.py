@@ -12,7 +12,7 @@ class Listener(libmyo.DeviceListener):
     stop the Hub.
     """
 
-    interval = 0.05  # Output only 0.05 seconds
+    interval = 0.08  # Output only 0.05 seconds
 
     def __init__(self):
         super(Listener, self).__init__()
@@ -28,6 +28,9 @@ class Listener(libmyo.DeviceListener):
         self.TakeOff = True
         available = "radio://0/80/2M"
         self.le = Crazy.Sling(available)
+        self.gotCenterYaw = False;
+        self.centerYaw = 0;
+        self.YawDeadZone = 0;
         #le._ramp_motors()
     def output(self):
         ctime = time.time()
@@ -36,17 +39,54 @@ class Listener(libmyo.DeviceListener):
         self.last_time = ctime
 
         parts = []
-        
-        
+        multiplier = 100000
+        #print(self.pose)
         if self.orientation:
             for comp in self.orientation:
                 parts.append(comp)
-            print("Roll: " + str(parts[0]))
-            print(" Pitch: " + str(parts[1]))
-            print(" Yaw: " + str(parts[2]) + "\n")
-            if( parts[0] < 0.0 and self.TakeOff ):
-                self.le.thrust = math.floor(130000 * math.fabs(parts[0]))
+            
+            x = self.orientation.x;
+            y = self.orientation.y;
+            z = self.orientation.z;
+            w = self.orientation.w;
+            armband_yaw = math.atan2(2.0* (y*z  + w*x ), w*w - x*x - y*y + z*z )
+            
+            armband_pitch = math.asin(-2.0*(x*z - w*y))
+            armband_roll = math.atan2(2.0*(x*y + w*z), w*w + x*x - y*y - z*z )
+
+            if (not self.gotCenterYaw):
+                self.gotCenterYaw = True;
+                self.centerYaw = armband_yaw*multiplier;
+                self.YawDeadZone = self.centerYaw + 10000;
+                print(self.YawDeadZone)
+                print(self.centerYaw)
+                return  False;
+            #print("Roll: " + str(roll))
+            print(" yaw: " + str(armband_yaw))
+            #print(" Yaw: " + str(yaw) + "\n")    
+
+
+            
+                #thrust = math.floor(130000 * math.fabs([0]))
+                
+            thrust = math.ceil(armband_pitch*multiplier)
+            crazy_roll = math.ceil(armband_yaw*multiplier)
+            print("thrust: "+ str(thrust))
+            print("roll: "+ str(crazy_roll))
+            print("DeadZone: " +str(self.YawDeadZone))
+            print("CenterYaw: "+str(self.centerYaw))
+            if ( thrust < 0.0):
+                thrust = 0
+            if ( thrust < 55000):
+                self.le.thrust = thrust
             print(self.le.thrust)
+
+            
+            #if ( crazy_roll < 55000):
+                self.le.roll = 0
+            else:
+                self.le.roll = crazy_roll
+            print(self.le.roll)
 
         """
         print('\r a' + ''.join('[{0}]'.format(p) for p in parts), end='')
@@ -80,11 +120,14 @@ class Listener(libmyo.DeviceListener):
             myo.set_stream_emg(libmyo.StreamEmg.enabled)
             self.emg_enabled = True
         elif pose == libmyo.Pose.fist:
-            myo.set_stream_emg(libmyo.StreamEmg.disabled)
-            self.emg_enabled = False
-            self.emg = None
-            self.le.thrust = 40000
-            self.TakeOff = True
+            if ( self.TakeOff):
+                self.TakeOff = True
+            else:
+                myo.set_stream_emg(libmyo.StreamEmg.disabled)
+                self.emg_enabled = False
+                self.emg = None
+                self.le.thrust = 40000
+                self.TakeOff = True
         self.pose = pose
         self.output()
 
@@ -161,7 +204,7 @@ def main():
     hub.set_locking_policy(libmyo.LockingPolicy.none)
     listener = Listener()
     hub.run(1000, listener)
-
+   
     # Listen to keyboard interrupts and stop the hub in that case.
     try:
         while hub.running:
