@@ -101,7 +101,7 @@ class Sling:
 
             while self.Run:
                 self._cf.commander.send_setpoint(self.roll, self.pitch, self.yawrate, self.thrust)
-                time.sleep(0.1)
+                time.sleep(0.2)
             #print("sling:" + str(self.thrust))
             """if thrust >= 35000:
                 while count < 30:

@@ -31,6 +31,8 @@ class Listener(libmyo.DeviceListener):
         self.gotCenterYaw = False;
         self.centerYaw = 0;
         self.YawDeadZone = 0;
+        self.centerRoll = 0;
+        self.centerRollSet = False;
         #le._ramp_motors()
     def output(self):
         ctime = time.time()
@@ -40,7 +42,7 @@ class Listener(libmyo.DeviceListener):
 
         parts = []
         multiplier = 100000
-        #print(self.pose)
+        print(self.pose)
         if self.orientation:
             for comp in self.orientation:
                 parts.append(comp)
@@ -62,7 +64,7 @@ class Listener(libmyo.DeviceListener):
                 print(self.centerYaw)
                 return  False;
             #print("Roll: " + str(roll))
-            print(" yaw: " + str(armband_yaw))
+            print(" roll: " + str(armband_roll))
             #print(" Yaw: " + str(yaw) + "\n")    
 
 
@@ -70,11 +72,11 @@ class Listener(libmyo.DeviceListener):
                 #thrust = math.floor(130000 * math.fabs([0]))
                 
             thrust = math.ceil(armband_pitch*multiplier)
-            crazy_roll = math.ceil(armband_yaw*multiplier)
-            print("thrust: "+ str(thrust))
-            print("roll: "+ str(crazy_roll))
-            print("DeadZone: " +str(self.YawDeadZone))
-            print("CenterYaw: "+str(self.centerYaw))
+            #crazy_roll = math.ceil(armband_yaw*multiplier)
+            #print("thrust: "+ str(thrust))
+            #print("roll: "+ str(crazy_roll))
+            #print("DeadZone: " +str(self.YawDeadZone))
+            #print("CenterYaw: "+str(self.centerYaw))
             if ( thrust < 0.0):
                 thrust = 0
             if ( thrust < 55000):
@@ -82,11 +84,69 @@ class Listener(libmyo.DeviceListener):
             print(self.le.thrust)
 
             
-            #if ( crazy_roll < 55000):
+            
+
+            
+
+            if ( self.pose == libmyo.Pose.double_tap):
+                self.centerRoll = armband_roll;
+                self.centerRollSet = True;
+
+            if ( self.centerRollSet ):
+                if ( armband_roll > self.centerRoll + 0.15):
+                    self.le.roll = ( armband_roll - ( self.centerRoll + 0.15) ) *40;
+                elif ( armband_roll < self.centerRoll - 0.15):
+                    self.le.roll = (armband_roll - (self.centerRoll - 0.15 )) * 40;
+                else :
+                    self.le.roll = 0 ;  
+
+
+
+
+
+
+
+
+
+            """
+            if ( self.pose == libmyo.Pose.fist):
+                if(self.centerYaw == 0 ):
+                    self.centerYaw = armband_yaw*multiplier;
+                if ( crazy_roll > self.centerYaw + 10000):
+                    self.le.roll = crazy_roll - (self.centerYaw + 10000)  ;
+                if ( crazy_roll < self.centerYaw - 10000):
+                    self.le.roll = crazy_roll - (self.centerYaw - 10000);
+
+                self.le.roll = self.le.roll * 0.0003
+                print(self.le.roll)
+            else :
+                self.le.roll = 0;
+                self.centerYaw = 0;
+            """
+
+            """
+            if ( self.pose == libmyo.Pose.wave_out):
+                self.le.roll = 100
+            elif( self.pose == libmyo.Pose.wave_in):
+                self.le.roll = -100
+            else:    
                 self.le.roll = 0
+
+            if(self.pose == libmyo.Pose.fist):
+                self.le.pitch = 10;
             else:
-                self.le.roll = crazy_roll
-            print(self.le.roll)
+                self.le.pitch = 0;
+            """
+
+
+            """
+            if ( self.le.roll > 30000 or self.le.roll < -30000):
+                self.le.roll = 0; 
+            """
+            print("Roll Center :"+str(self.centerRoll))
+            print ( self.le.roll)
+
+
 
         """
         print('\r a' + ''.join('[{0}]'.format(p) for p in parts), end='')
